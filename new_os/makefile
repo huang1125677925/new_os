@@ -4,7 +4,7 @@ AS = nasm
 CC = i386-elf-gcc
 LD = i386-elf-ld
 ASIB = -I boot/include/
-LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/
+LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/
 ASFLAGS = -f elf
 CFLAGS = -Wall $(LIB) -c -fno-builtin -W -Wstrict-prototypes \
          -Wmissing-prototypes 
@@ -12,7 +12,7 @@ LDFLAGS = -Ttext $(ENTRY_POINT) -e main -Map $(BUILD_DIR)/kernel.map
 OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
       $(BUILD_DIR)/timer.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o \
       $(BUILD_DIR)/debug.o $(BUILD_DIR)/memory.o $(BUILD_DIR)/bitmap.o \
-      $(BUILD_DIR)/string.o 
+      $(BUILD_DIR)/string.o $(BUILD_DIR)/thread.o 
 
 ##############     c代码编译     ###############
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h \
@@ -45,8 +45,12 @@ $(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c lib/kernel/bitmap.h \
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/memory.o: kernel/memory.c kernel/memory.h lib/stdint.h lib/kernel/bitmap.h \
-   	kernel/global.h kernel/global.h kernel/debug.h lib/kernel/print.h \
+   	kernel/global.h kernel/debug.h lib/kernel/print.h \
 	lib/kernel/io.h kernel/interrupt.h lib/string.h lib/stdint.h
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h kernel/global.h \
+	kernel/memory.h lib/string.h lib/stdint.h
 	$(CC) $(CFLAGS) $< -o $@
 
 #################   mbr 和loader        ##################
