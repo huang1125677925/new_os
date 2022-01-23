@@ -3,6 +3,7 @@
 #include "interrupt.h"
 #include "io.h"
 #include "global.h"
+#include "ioqueue.h"
 
 #define KBD_BUF_PORT 0x60	 // 键盘buffer寄存器端口号为0x60
 
@@ -33,6 +34,8 @@
 #define ctrl_r_make  	0xe01d
 #define ctrl_r_break 	0xe09d
 #define caps_lock_make 	0x3a
+
+struct ioqueue kbd_buf; // 定义键盘缓冲区
 
 /* 定义以下变量记录相应键是否按下的状态,
  * ext_scancode用于记录makecode是否以0xe0开头 */
@@ -188,21 +191,26 @@ static void intr_keyboard_handler(void) {
    
       /* 只处理ascii码不为0的键 */
       if (cur_char) {
-	 put_char(cur_char);
-	 return;
+         // 若kbd_buf 中未满并且待加入的cur_char 不为0
+         // 则将其加入到缓冲区kbd_buf
+         if(!ioq_full(&kbd_buf)) {
+            put_char(cur_char); //临时的
+            ioq_putchar(&kbd_buf, cur_char);
+         }
+         return;
       }
 
       /* 记录本次是否按下了下面几类控制键之一,供下次键入时判断组合键 */
       if (scancode == ctrl_l_make || scancode == ctrl_r_make) {
-	 ctrl_status = true;
+	      ctrl_status = true;
       } else if (scancode == shift_l_make || scancode == shift_r_make) {
-	 shift_status = true;
+	      shift_status = true;
       } else if (scancode == alt_l_make || scancode == alt_r_make) {
-	 alt_status = true;
+	      alt_status = true;
       } else if (scancode == caps_lock_make) {
       /* 不管之前是否有按下caps_lock键,当再次按下时则状态取反,
        * 即:已经开启时,再按下同样的键是关闭。关闭时按下表示开启。*/
-	 caps_lock_status = !caps_lock_status;
+	      caps_lock_status = !caps_lock_status;
       }
    } else {
       put_str("unknown key\n");
@@ -212,6 +220,7 @@ static void intr_keyboard_handler(void) {
 /* 键盘初始化 */
 void keyboard_init() {
    put_str("keyboard init start\n");
+   ioqueue_init(&kbd_buf);
    register_handler(0x21, intr_keyboard_handler);
    put_str("keyboard init done\n");
 }
